@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FarmaShift - Absensi & Serah Terima Apotek</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Main CSS Styling -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <i class="fas fa-prescription-bottle-medical"></i>
+        </div>
+        <div class="brand-name">
+          <span>Farma</span>Shift
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item active" data-view="dashboard">
+          <i class="fas fa-chart-pie"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="menu-item" data-view="scan">
+          <i class="fas fa-face-viewfinder"></i>
+          <span>Scan Presensi</span>
+        </a>
+        <a href="#" class="menu-item" data-view="schedule">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Jadwal Shift</span>
+        </a>
+        <a href="#" class="menu-item" data-view="handover">
+          <i class="fas fa-file-signature"></i>
+          <span>Serah Terima</span>
+        </a>
+        <a href="#" class="menu-item" data-view="history">
+          <i class="fas fa-history"></i>
+          <span>Riwayat & Log</span>
+        </a>
+        <a href="#" class="menu-item" data-view="employees">
+          <i class="fas fa-users-cog"></i>
+          <span>Data Karyawan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-summary" id="activeUserSummary" title="Klik untuk mengganti sesi karyawan secara cepat">
+          <div class="avatar-placeholder">
+            <i class="fas fa-user-circle"></i>
+          </div>
+          <div class="user-details" style="flex-grow: 1;">
+            <span class="user-name">Belum Login</span>
+            <span class="user-role">Scan untuk Masuk</span>
+          </div>
+          <div class="user-profile-edit-icon" style="opacity: 0.4; transition: opacity var(--transition-fast);">
+            <i class="fas fa-pen-to-square" style="font-size: 0.85rem;"></i>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN APP WRAPPER -->
+    <main class="main-content">
+      <!-- TOP HEADER -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="toggle-sidebar-btn" id="toggleSidebar">
+            <i class="fas fa-bars"></i>
+          </button>
+          <h1 class="page-title" id="pageTitle">Dashboard Overview</h1>
+        </div>
+        
+        <div class="header-right">
+          <!-- LIVE CLOCK -->
+          <div class="live-clock-container">
+            <i class="far fa-clock"></i>
+            <span id="liveClockDate">Sabtu, 06 Juni 2026</span>
+            <span id="liveClockTime" class="time-glow">15:30:00</span>
+          </div>
+          <!-- STATUS INDICATOR -->
+          <div class="shift-badge-container">
+            <span class="status-indicator-dot online"></span>
+            <span class="shift-name-tag" id="currentActiveShiftTag">Shift Pagi</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEW PANELS CONTAINER -->
+      <div class="content-body">
+        
+        <!-- DASHBOARD VIEW -->
+        <section class="view-panel active" id="view-dashboard">
+          <div class="dashboard-grid">
+            
+            <!-- STATS ROW -->
+            <div class="stats-card-container">
+              <div class="stats-card glass">
+                <div class="card-icon bg-emerald-glow">
+                  <i class="fas fa-users"></i>
+                </div>
+                <div class="card-content">
+                  <h3>Total Karyawan</h3>
+                  <p class="stat-value" id="stat-total-employees">0</p>
+                </div>
+              </div>
+
+              <div class="stats-card glass">
+                <div class="card-icon bg-blue-glow">
+                  <i class="fas fa-user-check"></i>
+                </div>
+                <div class="card-content">
+                  <h3>Hadir Hari Ini</h3>
+                  <p class="stat-value" id="stat-checked-in">0</p>
+                </div>
+              </div>
+
+              <div class="stats-card glass">
+                <div class="card-icon bg-amber-glow">
+                  <i class="fas fa-prescription-bottle"></i>
+                </div>
+                <div class="card-content">
+                  <h3>Obat Kritis</h3>
+                  <p class="stat-value" id="stat-critical-stocks">0</p>
+                </div>
+              </div>
+
+              <div class="stats-card glass">
+                <div class="card-icon bg-rose-glow">
+                  <i class="fas fa-triangle-exclamation"></i>
+                </div>
+                <div class="card-content">
+                  <h3>Kendala Shift</h3>
+                  <p class="stat-value" id="stat-open-issues">0</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- CORE INTERACTIVE ROW -->
+            <div class="dashboard-row-2">
+              <!-- ACTIVE SESSION CARD -->
+              <div class="dashboard-card glass active-shift-info-card">
+                <div class="card-header">
+                  <h2><i class="fas fa-clock-rotate-left"></i> Shift Aktif Saat Ini</h2>
+                  <span class="badge badge-success" id="activeShiftBadge">Berjalan</span>
+                </div>
+                <div class="card-body">
+                  <div class="active-shift-details">
+                    <div class="active-shift-karyawan">
+                      <div class="employee-avatar-large" id="activeShiftAvatar">
+                        <i class="fas fa-user-tie"></i>
+                      </div>
+                      <div class="employee-meta">
+                        <h4 id="activeShiftEmployeeName">Tidak Ada Karyawan</h4>
+                        <p id="activeShiftEmployeeRole">Apoteker Utama</p>
+                      </div>
+                    </div>
+                    
+                    <div class="shift-stats-list">
+                      <div class="shift-stat-item">
+                        <span class="label">Jadwal Shift</span>
+                        <span class="val" id="activeShiftTime">08:00 - 16:00</span>
+                      </div>
+                      <div class="shift-stat-item">
+                        <span class="label">Jam Masuk (Scan)</span>
+                        <span class="val text-emerald" id="activeShiftClockIn">--:--</span>
+                      </div>
+                      <div class="shift-stat-item">
+                        <span class="label">Status</span>
+                        <span class="val badge badge-outline-success" id="activeShiftStatusText">Siap</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="dashboard-actions">
+                    <button class="btn btn-primary btn-block text-center" onclick="navigateToView('scan')">
+                      <i class="fas fa-camera"></i> Scan Masuk / Keluar Shift
+                    </button>
+                    <button class="btn btn-outline btn-block text-center mt-2" onclick="navigateToView('handover')">
+                      <i class="fas fa-file-signature"></i> Lakukan Serah Terima Shift
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ALERTS AND CRITICAL INFOS -->
+              <div class="dashboard-card glass alert-dashboard-card">
+                <div class="card-header">
+                  <h2><i class="fas fa-triangle-exclamation text-amber"></i> Stok Obat & Kendala Terakhir</h2>
+                </div>
+                <div class="card-body">
+                  <div class="tabs-container">
+                    <div class="tab-headers">
+                      <button class="tab-btn active" onclick="switchDashboardTab('tab-stocks')">Stok Perlu Perhatian</button>
+                      <button class="tab-btn" onclick="switchDashboardTab('tab-issues')">Kendala Terakhir</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="tab-stocks">
+                      <ul class="alert-list" id="dashboard-stock-alerts">
+                        <!-- Dynamic list -->
+                        <li class="empty-list-msg">Tidak ada peringatan stok obat.</li>
+                      </ul>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-issues">
+                      <ul class="alert-list" id="dashboard-issue-alerts">
+                        <!-- Dynamic list -->
+                        <li class="empty-list-msg">Tidak ada kendala yang dilaporkan.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RECENT ATTENDANCE / LOGS -->
+            <div class="dashboard-card glass mt-4">
+              <div class="card-header">
+                <h2><i class="fas fa-history"></i> Log Serah Terima & Presensi Terakhir</h2>
+                <button class="btn btn-link" onclick="navigateToView('history')">Lihat Semua</button>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table" id="dashboardRecentActivityTable">
+                    <thead>
+                      <tr>
+                        <th>Waktu</th>
+                        <th>Karyawan</th>
+                        <th>Aktivitas</th>
+                        <th>Keterangan / Catatan</th>
+                        <th>Foto Scan</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dashboard-recent-activity">
+                      <!-- Dynamic entries -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- SCAN ATTENDANCE VIEW -->
+        <section class="view-panel" id="view-scan">
+          <div class="scan-layout-grid">
+            <!-- CAMERA SCREEN -->
+            <div class="scan-video-card glass">
+              <div class="scanner-container">
+                <video id="webcamVideo" autoplay playsinline muted></video>
+                <canvas id="scannerOverlayCanvas"></canvas>
+                
+                <!-- Scanner HUD Elements -->
+                <div class="scanner-hud">
+                  <div class="hud-corner top-left"></div>
+                  <div class="hud-corner top-right"></div>
+                  <div class="hud-corner bottom-left"></div>
+                  <div class="hud-corner bottom-right"></div>
+                  
+                  <div class="hud-status-box">
+                    <span id="scannerStatusText">Kamera Siap</span>
+                  </div>
+                  
+                  <div class="laser-scanner"></div>
+                </div>
+
+                <div class="scanner-captured-overlay" id="capturedFlash"></div>
+              </div>
+            </div>
+
+            <!-- SCAN CONTROLLER PANEL -->
+            <div class="scan-control-panel glass">
+              <h2><i class="fas fa-fingerprint text-emerald"></i> Verifikasi Wajah Biometrik</h2>
+              <p class="description">Harap posisikan wajah Anda di dalam kotak pemindai untuk melakukan check-in shift atau check-out.</p>
+              
+              <div class="form-group">
+                <label for="scanShiftType"><i class="fas fa-clock"></i> Pilih Jadwal Shift Anda</label>
+                <select id="scanShiftType" class="form-control">
+                  <!-- Loaded dynamically based on schedule -->
+                  <option value="">-- Pilih Jadwal Shift Aktif --</option>
+                </select>
+              </div>
+
+              <div class="scan-modes-tab">
+                <button class="btn-mode-tab active" id="scanModeIn" onclick="setScanMode('clock-in')">
+                  <i class="fas fa-sign-in-alt"></i> Absen MASUK Shift
+                </button>
+                <button class="btn-mode-tab" id="scanModeOut" onclick="setScanMode('clock-out')">
+                  <i class="fas fa-sign-out-alt"></i> Absen KELUAR Shift
+                </button>
+              </div>
+
+              <!-- SCAN FEEDBACK AREA -->
+              <div class="scan-feedback-container" id="scanFeedbackContainer">
+                <div class="feedback-placeholder">
+                  <i class="fas fa-shield-halved text-muted mb-2" style="font-size: 2.5rem;"></i>
+                  <p>Silakan klik tombol <strong>Mulai Pemindaian</strong> untuk memverifikasi wajah.</p>
+                </div>
+              </div>
+
+              <div class="scan-controls-buttons">
+                <button class="btn btn-primary btn-block btn-lg" id="btnStartScan">
+                  <i class="fas fa-expand-arrows-alt"></i> Muli Pemindaian Wajah
+                </button>
+                <button class="btn btn-outline btn-block mt-2" id="btnResetCamera">
+                  <i class="fas fa-arrows-rotate"></i> Reset Kamera
+                </button>
+              </div>
+
+              <!-- CAMERA FALLBACK / EMULATOR NOTIFICATION -->
+              <div class="alert-box alert-info mt-3">
+                <i class="fas fa-circle-info"></i>
+                <div>
+                  <strong>Biometric Simulator:</strong> Sistem mendeteksi wajah Anda secara real-time dan mencocokkannya dengan database karyawan terdaftar.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCHEDULE VIEW -->
+        <section class="view-panel" id="view-schedule">
+          <div class="schedule-grid">
+            <!-- SCHEDULING FORM -->
+            <div class="schedule-form-card glass">
+              <h2><i class="fas fa-calendar-plus text-emerald"></i> Buat Jadwal Shift Karyawan</h2>
+              <form id="createScheduleForm" class="mt-4">
+                <div class="form-group">
+                  <label for="schedEmployee"><i class="fas fa-user"></i> Pilih Karyawan</label>
+                  <select id="schedEmployee" class="form-control" required>
+                    <option value="">-- Pilih Karyawan --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="schedShift"><i class="fas fa-clock"></i> Tipe Shift</label>
+                  <select id="schedShift" class="form-control" required>
+                    <option value="Pagi">Pagi (08:00 - 16:00)</option>
+                    <option value="Siang">Siang (14:00 - 22:00)</option>
+                    <option value="Malam">Malam (22:00 - 08:00)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="schedDate"><i class="fas fa-calendar-day"></i> Tanggal Shift</label>
+                  <input type="date" id="schedDate" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block mt-4">
+                  <i class="fas fa-save"></i> Simpan Jadwal Shift
+                </button>
+              </form>
+            </div>
+
+            <!-- SCHEDULING TIMELINE / TABLE -->
+            <div class="schedule-table-card glass">
+              <h2><i class="fas fa-calendar-alt text-emerald"></i> Daftar Jadwal Shift Mingguan</h2>
+              
+              <div class="schedule-filters mt-3 mb-3">
+                <div class="search-input-wrapper">
+                  <i class="fas fa-search"></i>
+                  <input type="text" placeholder="Cari karyawan..." id="scheduleSearchInput" class="form-control-inline">
+                </div>
+                <input type="date" id="scheduleFilterDate" class="form-control-inline">
+              </div>
+
+              <div class="table-responsive">
+                <table class="table" id="scheduleTable">
+                  <thead>
+                    <tr>
+                      <th>Karyawan</th>
+                      <th>Tanggal</th>
+                      <th>Shift</th>
+                      <th>Jam Kerja</th>
+                      <th>Status Absen</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="schedule-table-body">
+                    <!-- Dynamic scheduling lists -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- HANDOVER VIEW -->
+        <section class="view-panel" id="view-handover">
+          <div class="handover-form-layout">
+            <div class="handover-main-card glass">
+              <h2><i class="fas fa-clipboard-list text-emerald"></i> Laporan Serah Terima Pergantian Shift</h2>
+              <p class="description">Silakan isi formulir serah terima sebelum mengakhiri shift Anda dan menyerahkan tanggung jawab kepada shift berikutnya.</p>
+              
+              <form id="handoverForm" class="mt-4">
+                <!-- SHIFT SELECTION DETAILS -->
+                <div class="form-row mt-3">
+                  <div class="form-group col-6">
+                    <label><i class="fas fa-user-slash text-rose"></i> Karyawan Shift Saat Ini (Keluar)</label>
+                    <input type="text" id="handoverEmployeeOut" class="form-control" readonly placeholder="Harap Scan Masuk Terlebih Dahulu">
+                    <input type="hidden" id="handoverEmployeeOutId">
+                  </div>
+                  <div class="form-group col-6">
+                    <label for="handoverEmployeeIn"><i class="fas fa-user-plus text-emerald"></i> Karyawan Shift Berikutnya (Masuk)</label>
+                    <select id="handoverEmployeeIn" class="form-control" required>
+                      <option value="">-- Pilih Karyawan Penerus --</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- HANDOVER NOTES -->
+                <div class="form-group mt-3">
+                  <label for="handoverNotes"><i class="fas fa-note-sticky text-emerald"></i> Catatan Serah Terima (Handover Notes)</label>
+                  <textarea id="handoverNotes" class="form-control" rows="4" placeholder="Tuliskan catatan penting operasional, tugas yang belum selesai, dll..." required></textarea>
+                </div>
+
+                <!-- MEDICINE STOCK WATCHLIST -->
+                <div class="form-section-header mt-4">
+                  <h3><i class="fas fa-prescription-bottle text-amber"></i> Stok Obat yang Perlu Diperhatikan</h3>
+                  <button type="button" class="btn btn-outline btn-xs" id="btnAddStockRow">
+                    <i class="fas fa-plus"></i> Tambah Obat
+                  </button>
+                </div>
+                <div class="alert-box alert-warning-outline mb-2">
+                  <i class="fas fa-triangle-exclamation"></i>
+                  <span>Laporkan obat yang persediaannya kritis, habis, atau sedang banyak dicari pasien.</span>
+                </div>
+                
+                <div class="stock-watchlist-container" id="stockWatchlistContainer">
+                  <!-- Dynamic Stock Rows will be inserted here -->
+                  <div class="empty-stock-row-msg">Belum ada obat yang ditambahkan. Klik "Tambah Obat" jika ada stok kritis.</div>
+                </div>
+
+                <!-- SHIFT ISSUES -->
+                <div class="form-section-header mt-4">
+                  <h3><i class="fas fa-triangle-exclamation text-rose"></i> Kendala Selama Shift</h3>
+                  <button type="button" class="btn btn-outline btn-xs" id="btnAddIssueRow">
+                    <i class="fas fa-plus"></i> Tambah Kendala
+                  </button>
+                </div>
+                
+                <div class="issues-list-container" id="issuesListContainer">
+                  <!-- Dynamic Issue Rows will be inserted here -->
+                  <div class="empty-issue-row-msg">Belum ada kendala yang dilaporkan. Operasional terpantau aman dan terkendali.</div>
+                </div>
+
+                <!-- BIOMETRIC AUTHORIZATION -->
+                <div class="handover-auth-box glass-card mt-5">
+                  <div class="auth-header">
+                    <h4><i class="fas fa-shield-halved text-emerald"></i> Tanda Tangan Biometrik (Verifikasi Wajah)</h4>
+                    <span class="badge badge-warning" id="handoverAuthStatus">Belum Diverifikasi</span>
+                  </div>
+                  <div class="auth-body">
+                    <p>Laporan serah terima memerlukan otentikasi wajah dari karyawan yang keluar untuk memvalidasi laporan.</p>
+                    <div class="auth-action-area">
+                      <div class="auth-photo-preview" id="handoverAuthPhoto">
+                        <i class="fas fa-face-viewfinder"></i>
+                      </div>
+                      <div class="auth-instructions">
+                        <button type="button" class="btn btn-outline" id="btnVerifyHandoverFace">
+                          <i class="fas fa-camera"></i> Mulai Scan Wajah
+                        </button>
+                        <p class="small text-muted mt-2">Wajah Anda akan dipindai menggunakan webcam untuk melengkapi verifikasi digital.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SUBMIT BUTTON -->
+                <button type="submit" class="btn btn-primary btn-block btn-lg mt-4" id="btnSubmitHandover" disabled>
+                  <i class="fas fa-paper-plane"></i> Kirim Laporan Serah Terima Shift
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- HISTORY & LOGS VIEW -->
+        <section class="view-panel" id="view-history">
+          <div class="history-container glass">
+            <div class="history-header">
+              <h2><i class="fas fa-clock-rotate-left text-emerald"></i> Riwayat Absensi & Serah Terima Shift</h2>
+              <div class="history-actions">
+                <button class="btn btn-outline btn-sm" id="btnExportCSV">
+                  <i class="fas fa-file-csv"></i> Ekspor CSV
+                </button>
+                <button class="btn btn-outline btn-sm ml-2" id="btnClearHistory">
+                  <i class="fas fa-trash-can text-rose"></i> Bersihkan Log
+                </button>
+              </div>
+            </div>
+
+            <!-- FILTERS -->
+            <div class="history-filters mt-3 mb-4">
+              <div class="filter-group">
+                <label for="historyFilterType">Tipe Log</label>
+                <select id="historyFilterType" class="form-control-inline">
+                  <option value="all">Semua Aktivitas</option>
+                  <option value="absensi">Absensi Saja</option>
+                  <option value="handover">Serah Terima Saja</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="historyFilterEmployee">Karyawan</label>
+                <select id="historyFilterEmployee" class="form-control-inline">
+                  <option value="all">Semua Karyawan</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="historyFilterDate">Tanggal</label>
+                <input type="date" id="historyFilterDate" class="form-control-inline">
+              </div>
+            </div>
+
+            <!-- LOGS TIMELINE/LIST -->
+            <div class="logs-timeline" id="logsTimeline">
+              <!-- Dynamic historical logs -->
+            </div>
+          </div>
+        </section>
+
+        <!-- EMPLOYEES REGISTER & DATA VIEW -->
+        <section class="view-panel" id="view-employees">
+          <div class="employees-header-row mb-4">
+            <h2><i class="fas fa-users text-emerald"></i> Kelola Data Karyawan</h2>
+            <button class="btn btn-primary" id="btnOpenAddEmployeeModal">
+              <i class="fas fa-user-plus"></i> Tambah Karyawan Baru
+            </button>
+          </div>
+
+          <!-- EMPLOYEES GRID -->
+          <div class="employees-grid" id="employeesGrid">
+            <!-- Dynamic employee cards -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD EMPLOYEE MODAL -->
+  <div class="modal-backdrop" id="addEmployeeModal">
+    <div class="modal glass-card">
+      <div class="modal-header">
+        <h3><i class="fas fa-user-plus text-emerald"></i> Registrasi Karyawan Baru</h3>
+        <button class="close-modal-btn" onclick="closeEmployeeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addEmployeeForm">
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="empName">Nama Lengkap</label>
+              <input type="text" id="empName" class="form-control" placeholder="Contoh: Budi Santoso" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="empRole">Jabatan / Peran</label>
+              <select id="empRole" class="form-control" required>
+                <option value="Apoteker Utama">Apoteker Utama</option>
+                <option value="Asisten Apoteker">Asisten Apoteker</option>
+                <option value="Kasir Apotek">Kasir Apotek</option>
+                <option value="Staf Logistik">Staf Logistik</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="empId">NIP / Nomor Karyawan</label>
+            <input type="text" id="empId" class="form-control" placeholder="Contoh: AP-2026-003" required>
+          </div>
+
+          <!-- BIOMETRIC PROFILE CAMERA CAPTURE -->
+          <div class="biometric-register-section mt-4">
+            <label class="section-label"><i class="fas fa-camera text-emerald"></i> Registrasi Wajah Biometrik</label>
+            <p class="desc-small">Wajah karyawan harus didaftarkan ke sistem menggunakan kamera agar dapat melakukan scan presensi.</p>
+            
+            <div class="camera-register-box mt-2">
+              <div class="register-camera-viewport">
+                <video id="registerVideo" autoplay playsinline muted></video>
+                <canvas id="registerCanvas" style="display:none;"></canvas>
+                <div class="camera-placeholder-msg" id="cameraPlaceholderMsg">
+                  <i class="fas fa-video-slash"></i>
+                  <p>Kamera belum aktif. Klik "Aktifkan Kamera" di bawah.</p>
+                </div>
+                <div class="scan-frame-box"></div>
+              </div>
+              
+              <div class="register-photo-preview" id="registerPhotoPreview">
+                <!-- Preview captured snapshot -->
+                <div class="preview-empty">
+                  <i class="fas fa-image"></i>
+                  <span>Pratinjau Foto</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="camera-actions-row mt-3">
+              <button type="button" class="btn btn-outline" id="btnStartRegisterCamera">
+                <i class="fas fa-power-off"></i> Aktifkan Kamera
+              </button>
+              <button type="button" class="btn btn-emerald" id="btnCaptureRegisterPhoto" disabled>
+                <i class="fas fa-camera"></i> Ambil Foto Wajah
+              </button>
+              <button type="button" class="btn btn-outline" id="btnRetakeRegisterPhoto" style="display:none;">
+                <i class="fas fa-redo"></i> Ulangi
+              </button>
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-outline" onclick="closeEmployeeModal()">Batal</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveEmployee" disabled>
+              <i class="fas fa-save"></i> Simpan Data Karyawan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- BIOMETRIC VERIFICATION MODAL FOR HANDOVER SIGN-OFF -->
+  <div class="modal-backdrop" id="biometricVerifyModal">
+    <div class="modal glass-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-shield-halved text-emerald"></i> Otentikasi Pembuat Laporan</h3>
+        <button class="close-modal-btn" onclick="closeVerifyModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="scanner-container" style="height: 280px; border-radius: 12px; margin-bottom: 20px;">
+          <video id="verifyVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+          <canvas id="verifyOverlayCanvas"></canvas>
+          <div class="scanner-hud">
+            <div class="hud-corner top-left"></div>
+            <div class="hud-corner top-right"></div>
+            <div class="hud-corner bottom-left"></div>
+            <div class="hud-corner bottom-right"></div>
+            <div class="laser-scanner"></div>
+          </div>
+        </div>
+        <div class="verification-status-box text-center">
+          <div id="verifyMessage">Menghubungkan kamera...</div>
+          <div class="progress-bar-container mt-2" style="display:none;" id="verifyProgressContainer">
+            <div class="progress-bar" id="verifyProgressBar"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: center;">
+        <button type="button" class="btn btn-outline" onclick="closeVerifyModal()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnTriggerVerifyScan">Mulai Pindai</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SWITCH SESSION MODAL -->
+  <div class="modal-backdrop" id="switchSessionModal">
+    <div class="modal glass-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-shuffle text-emerald"></i> Ganti Karyawan Aktif</h3>
+        <button class="close-modal-btn" onclick="closeSwitchSessionModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="desc-small mb-3">Pilih karyawan di bawah untuk beralih sesi kerja aktif secara instan:</p>
+        <div class="form-group">
+          <label for="switchSessionSelect"><i class="fas fa-user"></i> Pilih Karyawan</label>
+          <select id="switchSessionSelect" class="form-control" required>
+            <!-- Loaded dynamically -->
+          </select>
+        </div>
+        <div class="form-group mt-3">
+          <label for="switchSessionShift"><i class="fas fa-clock"></i> Pilih Shift Kerja</label>
+          <select id="switchSessionShift" class="form-control">
+            <option value="Pagi">Pagi (08:00 - 16:00)</option>
+            <option value="Siang">Siang (14:00 - 22:00)</option>
+            <option value="Malam">Malam (22:00 - 08:00)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeSwitchSessionModal()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmSwitchSession">
+          <i class="fas fa-check-circle"></i> Beralih Sesi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
