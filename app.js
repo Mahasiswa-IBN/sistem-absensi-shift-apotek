@@ -172,6 +172,7 @@ let currentView = 'dashboard';
 let activeCameraStream = null;
 let scanMode = 'clock-in'; // 'clock-in' or 'clock-out'
 let activeVerificationPhoto = null; // Stored temp image for handover signing
+let intendedViewAfterAdminLogin = null;
 
 // --- DOM ELEMENTS REFERENCE ---
 const els = {
@@ -275,9 +276,333 @@ const els = {
   switchSessionModal: document.getElementById('switchSessionModal'),
   switchSessionSelect: document.getElementById('switchSessionSelect'),
   switchSessionShift: document.getElementById('switchSessionShift'),
-  btnConfirmSwitchSession: document.getElementById('btnConfirmSwitchSession')
+  btnConfirmSwitchSession: document.getElementById('btnConfirmSwitchSession'),
+
+  // Admin Login Elements
+  adminLoginForm: document.getElementById('adminLoginForm'),
+  adminUsername: document.getElementById('adminUsername'),
+  adminPassword: document.getElementById('adminPassword'),
+  adminLoginWarning: document.getElementById('adminLoginWarning'),
+  adminLoginWarningText: document.getElementById('adminLoginWarningText'),
+  adminLoginError: document.getElementById('adminLoginError'),
+  adminLoginErrorText: document.getElementById('adminLoginErrorText'),
+  adminMenuText: document.getElementById('adminMenuText'),
+  menuItemAdmin: document.getElementById('menu-item-admin'),
+
+  // New Full Screen Login Portal Elements
+  loginPortalBackdrop: document.getElementById('loginPortalBackdrop'),
+  portalKaryawanForm: document.getElementById('portalKaryawanForm'),
+  portalKaryawanShift: document.getElementById('portalKaryawanShift'),
+  portalKaryawanNip: document.getElementById('portalKaryawanNip'),
+  portalKaryawanError: document.getElementById('portalKaryawanError'),
+  portalKaryawanErrorText: document.getElementById('portalKaryawanErrorText'),
+  btnPortalKaryawanLogin: document.getElementById('btnPortalKaryawanLogin'),
+  btnPortalKaryawanScan: document.getElementById('btnPortalKaryawanScan'),
+  portalAdminForm: document.getElementById('portalAdminForm'),
+  portalAdminUsername: document.getElementById('portalAdminUsername'),
+  portalAdminPassword: document.getElementById('portalAdminPassword'),
+  portalAdminError: document.getElementById('portalAdminError'),
+  portalAdminErrorText: document.getElementById('portalAdminErrorText'),
+  btnPortalAdminLogin: document.getElementById('btnPortalAdminLogin'),
+  menuItemLogout: document.getElementById('menu-item-logout'),
+
+  // Portal Biometric Modal
+  portalBiometricModal: document.getElementById('portalBiometricModal'),
+  portalScanVideo: document.getElementById('portalScanVideo'),
+  portalScanOverlayCanvas: document.getElementById('portalScanOverlayCanvas'),
+  portalScanMessage: document.getElementById('portalScanMessage'),
+  portalScanProgressContainer: document.getElementById('portalScanProgressContainer'),
+  portalScanProgressBar: document.getElementById('portalScanProgressBar'),
+  btnTriggerPortalScan: document.getElementById('btnTriggerPortalScan')
 };
 
+
+// ==========================================
+// 0. AUTHENTICATION & LOGIN PORTAL MODULE
+// ==========================================
+function switchLoginTab(tab) {
+  const tabBtnKaryawan = document.getElementById('tabBtnKaryawan');
+  const tabBtnAdmin = document.getElementById('tabBtnAdmin');
+  const viewKaryawan = document.getElementById('loginPortalViewKaryawan');
+  const viewAdmin = document.getElementById('loginPortalViewAdmin');
+  
+  if (tab === 'karyawan') {
+    if (tabBtnKaryawan) tabBtnKaryawan.classList.add('active');
+    if (tabBtnAdmin) tabBtnAdmin.classList.remove('active');
+    if (viewKaryawan) viewKaryawan.classList.add('active');
+    if (viewAdmin) viewAdmin.classList.remove('active');
+  } else {
+    if (tabBtnKaryawan) tabBtnKaryawan.classList.remove('active');
+    if (tabBtnAdmin) tabBtnAdmin.classList.add('active');
+    if (viewKaryawan) viewKaryawan.classList.remove('active');
+    if (viewAdmin) viewAdmin.classList.add('active');
+  }
+}
+window.switchLoginTab = switchLoginTab;
+
+function checkAuthentication() {
+  const adminLoggedIn = isAdminLoggedIn();
+  const session = db.get(DB_KEYS.SESSION, null);
+  
+  if (adminLoggedIn || session) {
+    showDashboardPortal();
+  } else {
+    showLoginPortal();
+  }
+}
+
+function showLoginPortal() {
+  stopAllCameraStreams();
+  stopCanvasScannerAnimation(els.scannerOverlayCanvas);
+  
+  // Hide main app container
+  const appContainer = document.querySelector('.app-container');
+  if (appContainer) appContainer.style.display = 'none';
+  
+  // Show login backdrop
+  if (els.loginPortalBackdrop) {
+    els.loginPortalBackdrop.style.display = 'flex';
+  }
+  
+  // Populate the Employee Shift dropdown in the login portal
+  populatePortalShiftDropdown();
+}
+
+function showDashboardPortal() {
+  // Hide login backdrop
+  if (els.loginPortalBackdrop) {
+    els.loginPortalBackdrop.style.display = 'none';
+  }
+  
+  // Show main app container
+  const appContainer = document.querySelector('.app-container');
+  if (appContainer) appContainer.style.display = 'flex';
+  
+  // Load data for dashboard
+  loadDashboardData();
+  
+  // Make sure we go to dashboard by default if logged in
+  navigateToView(currentView || 'dashboard');
+}
+
+function populatePortalShiftDropdown() {
+  if (!els.portalKaryawanShift) return;
+  const schedules = db.get(DB_KEYS.SCHEDULES, []);
+  const todayDate = new Date().toISOString().split('T')[0];
+  const todaySchedules = schedules.filter(s => s.date === todayDate);
+  
+  els.portalKaryawanShift.innerHTML = '<option value="">-- Pilih Jadwal Shift Aktif --</option>';
+  todaySchedules.forEach(sched => {
+    els.portalKaryawanShift.innerHTML += `
+      <option value="${sched.id}">${sched.shift} : ${sched.empName} (${sched.time})</option>
+    `;
+  });
+}
+
+// Bind Employee Portal Form
+if (els.portalKaryawanForm) {
+  els.portalKaryawanForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const schedId = els.portalKaryawanShift.value;
+    const nipInput = els.portalKaryawanNip.value.trim();
+    
+    if (els.portalKaryawanError) els.portalKaryawanError.style.display = 'none';
+    
+    if (!schedId) {
+      alert("Silakan pilih Jadwal Shift Anda!");
+      return;
+    }
+    
+    const schedules = db.get(DB_KEYS.SCHEDULES, []);
+    const employees = db.get(DB_KEYS.EMPLOYEES, []);
+    
+    const selectedSched = schedules.find(s => s.id === schedId);
+    const employee = employees.find(e => e.id === selectedSched.empId);
+    
+    if (employee && employee.id === nipInput) {
+      const today = new Date();
+      const curTime = today.toTimeString().split(' ')[0];
+      const curDate = today.toISOString().split('T')[0];
+      
+      const logs = db.get(DB_KEYS.ATTENDANCE, []);
+      const isAlreadyClockedIn = logs.some(log => log.date === curDate && log.empId === employee.id && log.type === 'Clock In' && log.shift === selectedSched.shift);
+      
+      if (!isAlreadyClockedIn) {
+        logs.push({
+          id: `A-${Date.now()}`,
+          empId: employee.id,
+          empName: employee.name,
+          date: curDate,
+          time: curTime,
+          type: 'Clock In',
+          shift: selectedSched.shift,
+          photo: employee.avatar
+        });
+        db.set(DB_KEYS.ATTENDANCE, logs);
+        
+        selectedSched.status = 'Hadir';
+        db.set(DB_KEYS.SCHEDULES, schedules);
+      }
+      
+      db.set(DB_KEYS.SESSION, {
+        empId: employee.id,
+        empName: employee.name,
+        role: employee.role,
+        shiftId: selectedSched.id,
+        shiftName: selectedSched.shift,
+        clockInTime: curTime
+      });
+      
+      alert(`Login Pegawai Berhasil! Selamat bekerja, ${employee.name}.`);
+      els.portalKaryawanForm.reset();
+      checkAuthentication();
+    } else {
+      if (els.portalKaryawanError && els.portalKaryawanErrorText) {
+        els.portalKaryawanErrorText.textContent = "NIP salah atau tidak terdaftar untuk shift ini!";
+        els.portalKaryawanError.style.display = 'flex';
+      }
+    }
+  });
+}
+
+// Bind Employee Portal Face Scan
+if (els.btnPortalKaryawanScan) {
+  els.btnPortalKaryawanScan.addEventListener('click', async () => {
+    const selectedSchedId = els.portalKaryawanShift.value;
+    if (!selectedSchedId) {
+      alert("Silakan pilih Jadwal Shift Anda terlebih dahulu!");
+      return;
+    }
+    
+    els.portalBiometricModal.classList.add('active');
+    els.portalScanMessage.textContent = "Mengaktifkan kamera...";
+    els.portalScanProgressContainer.style.display = 'none';
+    els.portalScanProgressBar.style.width = '0%';
+    
+    const hasCamera = await startWebcam(els.portalScanVideo, () => {
+      els.portalScanMessage.textContent = "SIMULATOR KAMERA AKTIF - KLIK PINDAI";
+    });
+    
+    if (hasCamera) {
+      els.portalScanMessage.textContent = "Kamera Siap. Posisikan wajah Anda lalu klik 'Mulai Pindai'.";
+    }
+  });
+}
+
+function closePortalScanModal() {
+  stopAllCameraStreams();
+  stopCanvasScannerAnimation(els.portalScanOverlayCanvas);
+  if (els.portalBiometricModal) {
+    els.portalBiometricModal.classList.remove('active');
+  }
+}
+window.closePortalScanModal = closePortalScanModal;
+
+if (els.btnTriggerPortalScan) {
+  els.btnTriggerPortalScan.addEventListener('click', () => {
+    const selectedSchedId = els.portalKaryawanShift.value;
+    const schedules = db.get(DB_KEYS.SCHEDULES, []);
+    const employees = db.get(DB_KEYS.EMPLOYEES, []);
+    
+    const selectedSched = schedules.find(s => s.id === selectedSchedId);
+    const employee = employees.find(e => e.id === selectedSched.empId);
+    
+    els.portalScanProgressContainer.style.display = 'block';
+    els.btnTriggerPortalScan.disabled = true;
+    
+    startCanvasScannerAnimation(els.portalScanOverlayCanvas, els.portalScanVideo, (text, percent) => {
+      els.portalScanMessage.innerHTML = `<strong class="text-emerald">${text}</strong>`;
+      els.portalScanProgressBar.style.width = `${percent}%`;
+    });
+    
+    setTimeout(() => {
+      let capturedImg = employee ? employee.avatar : MOCK_AVATARS.sarah;
+      
+      if (activeCameraStream) {
+        capturedImg = captureCameraFrame(els.portalScanVideo);
+      }
+      
+      closePortalScanModal();
+      els.btnTriggerPortalScan.disabled = false;
+      
+      const today = new Date();
+      const curTime = today.toTimeString().split(' ')[0];
+      const curDate = today.toISOString().split('T')[0];
+      
+      const logs = db.get(DB_KEYS.ATTENDANCE, []);
+      
+      logs.push({
+        id: `A-${Date.now()}`,
+        empId: employee.id,
+        empName: employee.name,
+        date: curDate,
+        time: curTime,
+        type: 'Clock In',
+        shift: selectedSched.shift,
+        photo: capturedImg
+      });
+      db.set(DB_KEYS.ATTENDANCE, logs);
+      
+      selectedSched.status = 'Hadir';
+      db.set(DB_KEYS.SCHEDULES, schedules);
+      
+      db.set(DB_KEYS.SESSION, {
+        empId: employee.id,
+        empName: employee.name,
+        role: employee.role,
+        shiftId: selectedSched.id,
+        shiftName: selectedSched.shift,
+        clockInTime: curTime
+      });
+      
+      alert(`Otentikasi biometrik berhasil! Selamat bekerja, ${employee.name}.`);
+      checkAuthentication();
+    }, 3200);
+  });
+}
+
+// Bind Admin Portal Form
+if (els.portalAdminForm) {
+  els.portalAdminForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = els.portalAdminUsername.value.trim();
+    const password = els.portalAdminPassword.value.trim();
+    
+    if (els.portalAdminError) els.portalAdminError.style.display = 'none';
+    
+    if (username === 'admin' && password === 'admin123') {
+      localStorage.setItem('farma_is_admin', 'true');
+      updateAdminUI();
+      
+      alert("Login Administrator berhasil!");
+      els.portalAdminForm.reset();
+      checkAuthentication();
+    } else {
+      if (els.portalAdminError && els.portalAdminErrorText) {
+        els.portalAdminErrorText.textContent = "Username atau password admin salah!";
+        els.portalAdminError.style.display = 'flex';
+      }
+    }
+  });
+}
+
+// Bind Sidebar Logout Button
+if (els.menuItemLogout) {
+  els.menuItemLogout.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (confirm("Apakah Anda yakin ingin keluar dari sesi saat ini?")) {
+      logoutAll();
+    }
+  });
+}
+
+function logoutAll() {
+  localStorage.removeItem('farma_is_admin');
+  db.set(DB_KEYS.SESSION, null);
+  updateAdminUI();
+  checkAuthentication();
+  alert("Anda telah keluar dari sistem.");
+}
 
 // ==========================================
 // 1. DIGITAL LIVE CLOCK & TICKER
@@ -350,6 +675,23 @@ function initNavigation() {
 }
 
 function navigateToView(viewName) {
+  // Access control check for restricted views
+  const restrictedViews = ['schedule', 'employees'];
+  if (restrictedViews.includes(viewName) && !isAdminLoggedIn()) {
+    intendedViewAfterAdminLogin = viewName;
+    navigateToView('admin-login');
+    showAdminLoginWarning(`Akses terbatas. Silakan login sebagai admin untuk mengakses halaman ${viewName === 'schedule' ? 'Jadwal Shift' : 'Data Karyawan'}.`);
+    return;
+  }
+
+  // Handle click on admin-login when already logged in (Logout flow)
+  if (viewName === 'admin-login' && isAdminLoggedIn()) {
+    if (confirm("Apakah Anda yakin ingin keluar dari mode Administrator?")) {
+      logoutAdmin();
+    }
+    return;
+  }
+
   // Stop camera streams if active when switching views
   stopAllCameraStreams();
   
@@ -373,6 +715,7 @@ function navigateToView(viewName) {
   else if (viewName === 'handover') title = 'Serah Terima Shift';
   else if (viewName === 'history') title = 'Riwayat & Aktivitas Log';
   else if (viewName === 'employees') title = 'Kelola Database Karyawan';
+  else if (viewName === 'admin-login') title = 'Login Administrator';
   
   els.pageTitle.textContent = title;
   
@@ -383,6 +726,7 @@ function navigateToView(viewName) {
   else if (viewName === 'handover') loadHandoverView();
   else if (viewName === 'history') loadHistoryView();
   else if (viewName === 'employees') loadEmployeesView();
+  else if (viewName === 'admin-login') initAdminLoginView();
 }
 
 
@@ -1055,7 +1399,8 @@ els.btnStartScan.addEventListener('click', async () => {
       
       // Clear session if the currently clocked-out employee is the session user
       if (session && session.empId === employee.id) {
-        localStorage.removeItem(DB_KEYS.SESSION);
+        db.set(DB_KEYS.SESSION, null);
+        setTimeout(() => checkAuthentication(), 1500);
       }
       
       els.scanFeedbackContainer.innerHTML = `
@@ -1499,7 +1844,7 @@ els.handoverForm.addEventListener('submit', (e) => {
     });
   } else {
     // If no schedule registered, clear active session (waiting for next scan check-in)
-    localStorage.removeItem(DB_KEYS.SESSION);
+    db.set(DB_KEYS.SESSION, null);
   }
   
   db.set(DB_KEYS.SCHEDULES, schedules);
@@ -1507,8 +1852,8 @@ els.handoverForm.addEventListener('submit', (e) => {
   
   alert(`Laporan Serah Terima Shift berhasil dikirim! Sesi aktif dialihkan ke ${nextEmployee.name}.`);
   
-  // Redirect to dashboard
-  navigateToView('dashboard');
+  // Check auth to redirect to login portal or reload dashboard
+  checkAuthentication();
 });
 
 
@@ -1678,24 +2023,39 @@ els.btnExportCSV.addEventListener('click', () => {
     return;
   }
   
-  let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "ID,NIP,Nama Karyawan,Tanggal,Waktu,Tipe Absen,Shift\r\n";
+  let csvContent = "sep=,\r\nID,NIP,Nama Karyawan,Tanggal,Waktu,Tipe Absen,Shift\r\n";
   
   logs.forEach(log => {
-    csvContent += `${log.id},${log.empId},"${log.empName}",${log.date},${log.time},${log.type},${log.shift}\r\n`;
+    // Escape double quotes inside values if any
+    const escapedId = (log.id || '').toString().replace(/"/g, '""');
+    const escapedNip = (log.empId || '').toString().replace(/"/g, '""');
+    const escapedName = (log.empName || '').toString().replace(/"/g, '""');
+    const escapedDate = (log.date || '').toString().replace(/"/g, '""');
+    const escapedTime = (log.time || '').toString().replace(/"/g, '""');
+    const escapedType = (log.type || '').toString().replace(/"/g, '""');
+    const escapedShift = (log.shift || '').toString().replace(/"/g, '""');
+    
+    csvContent += `"${escapedId}","${escapedNip}","${escapedName}","${escapedDate}","${escapedTime}","${escapedType}","${escapedShift}"\r\n`;
   });
   
-  const encodedUri = encodeURI(csvContent);
+  // Create Blob with UTF-8 BOM to ensure Excel opens special characters correctly
+  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
+  link.setAttribute("href", url);
   link.setAttribute("download", `FarmaShift_Export_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 });
 
 // Clear history
 els.btnClearHistory.addEventListener('click', () => {
+  if (!isAdminLoggedIn()) {
+    alert("Hanya Administrator yang dapat menghapus riwayat!");
+    return;
+  }
   if (confirm("Apakah Anda yakin ingin menghapus semua riwayat presensi dan handover? Tindakan ini tidak bisa dibatalkan!")) {
     db.set(DB_KEYS.ATTENDANCE, []);
     db.set(DB_KEYS.HANDOVERS, []);
@@ -1973,7 +2333,105 @@ els.btnConfirmSwitchSession.addEventListener('click', () => {
 });
 
 // ==========================================
-// 11. INITIALIZATION ON PAGE LOAD
+// 11. ADMIN MODE & SESSION MANAGEMENT
+// ==========================================
+function isAdminLoggedIn() {
+  return localStorage.getItem('farma_is_admin') === 'true';
+}
+
+function showAdminLoginWarning(msg) {
+  if (els.adminLoginWarning && els.adminLoginWarningText) {
+    els.adminLoginWarningText.textContent = msg;
+    els.adminLoginWarning.style.display = 'flex';
+  }
+}
+
+function initAdminLoginView() {
+  if (els.adminLoginForm) {
+    els.adminLoginForm.reset();
+  }
+  if (els.adminLoginError) {
+    els.adminLoginError.style.display = 'none';
+  }
+}
+
+function logoutAdmin() {
+  localStorage.removeItem('farma_is_admin');
+  updateAdminUI();
+  alert("Anda telah keluar dari mode Administrator.");
+  navigateToView('dashboard');
+}
+
+function updateAdminUI() {
+  const loggedIn = isAdminLoggedIn();
+  const locks = document.querySelectorAll('.lock-icon');
+  
+  if (loggedIn) {
+    if (els.adminMenuText) els.adminMenuText.textContent = "Logout Admin";
+    if (els.menuItemAdmin) {
+      const icon = els.menuItemAdmin.querySelector('i');
+      if (icon) {
+        icon.className = "fas fa-sign-out-alt text-rose";
+      }
+    }
+    locks.forEach(lock => lock.style.display = "none");
+    if (els.btnClearHistory) els.btnClearHistory.style.display = "inline-block";
+  } else {
+    if (els.adminMenuText) els.adminMenuText.textContent = "Login Admin";
+    if (els.menuItemAdmin) {
+      const icon = els.menuItemAdmin.querySelector('i');
+      if (icon) {
+        icon.className = "fas fa-user-shield text-emerald";
+      }
+    }
+    locks.forEach(lock => lock.style.display = "inline-block");
+    if (els.btnClearHistory) els.btnClearHistory.style.display = "none";
+  }
+}
+
+// Bind Admin Login Form Submission
+if (els.adminLoginForm) {
+  els.adminLoginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = els.adminUsername.value.trim();
+    const password = els.adminPassword.value.trim();
+    
+    // Clear warning on submit
+    if (els.adminLoginWarning) {
+      els.adminLoginWarning.style.display = 'none';
+    }
+    
+    if (username === 'admin' && password === 'admin123') {
+      localStorage.setItem('farma_is_admin', 'true');
+      updateAdminUI();
+      
+      // Hide error alert
+      if (els.adminLoginError) {
+        els.adminLoginError.style.display = 'none';
+      }
+      
+      alert("Login Administrator berhasil!");
+      
+      // Redirect to intended view if any, else dashboard
+      if (intendedViewAfterAdminLogin) {
+        const dest = intendedViewAfterAdminLogin;
+        intendedViewAfterAdminLogin = null;
+        navigateToView(dest);
+      } else {
+        navigateToView('dashboard');
+      }
+    } else {
+      // Show error alert
+      if (els.adminLoginError && els.adminLoginErrorText) {
+        els.adminLoginErrorText.textContent = "Username atau password salah!";
+        els.adminLoginError.style.display = 'flex';
+      }
+    }
+  });
+}
+
+// ==========================================
+// 12. INITIALIZATION ON PAGE LOAD
 // ==========================================
 window.addEventListener('DOMContentLoaded', async () => {
   startLiveClock();
@@ -1982,6 +2440,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Sync database state from API/LocalStorage first
   await db.loadFromSource();
   
-  // Load Default view (Dashboard)
-  navigateToView('dashboard');
+  // Update Admin UI state (locks/buttons)
+  updateAdminUI();
+  
+  // Check auth and direct to correct view
+  checkAuthentication();
 });

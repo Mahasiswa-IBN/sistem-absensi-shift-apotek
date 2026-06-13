@@ -15,7 +15,85 @@
 </head>
 <body>
 
-  <div class="app-container">
+  <!-- FULL SCREEN LOGIN PORTAL -->
+  <div class="login-portal-backdrop" id="loginPortalBackdrop" style="display: flex;">
+    <div class="login-portal-card glass-card">
+      <div class="login-portal-header">
+        <div class="login-portal-logo">
+          <i class="fas fa-prescription-bottle-medical"></i><span>Farma</span>Shift
+        </div>
+        <p class="login-portal-subtitle">Sistem Absensi & Serah Terima Shift Apotek</p>
+      </div>
+
+      <div class="login-portal-tabs">
+        <button class="login-portal-tab-btn active" id="tabBtnKaryawan" onclick="switchLoginTab('karyawan')">
+          <i class="fas fa-user-clock"></i> Presensi Karyawan
+        </button>
+        <button class="login-portal-tab-btn" id="tabBtnAdmin" onclick="switchLoginTab('admin')">
+          <i class="fas fa-user-shield"></i> Admin Portal
+        </button>
+      </div>
+
+      <!-- KARYAWAN LOGIN VIEW -->
+      <div class="login-portal-view active" id="loginPortalViewKaryawan">
+        <form id="portalKaryawanForm" class="login-portal-form">
+          <div class="form-group">
+            <label for="portalKaryawanShift"><i class="fas fa-clock"></i> Pilih Shift Kerja Hari Ini</label>
+            <select id="portalKaryawanShift" class="form-control" required>
+              <option value="">-- Pilih Jadwal Shift Aktif --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="portalKaryawanNip"><i class="fas fa-id-card"></i> Nomor Induk Pegawai (NIP)</label>
+            <input type="text" id="portalKaryawanNip" class="form-control" placeholder="Contoh: AP-2026-001" required autocomplete="off">
+          </div>
+
+          <div class="alert-box alert-danger-outline mb-3" id="portalKaryawanError" style="display: none;">
+            <i class="fas fa-circle-xmark"></i>
+            <span id="portalKaryawanErrorText">NIP atau Jadwal Shift tidak cocok!</span>
+          </div>
+
+          <div class="login-portal-btn-row">
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnPortalKaryawanLogin">
+              <i class="fas fa-sign-in-alt"></i> Masuk Dashboard Sesi
+            </button>
+            <button type="button" class="btn btn-outline btn-block" id="btnPortalKaryawanScan">
+              <i class="fas fa-camera"></i> Mulai Scan Wajah Presensi
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ADMIN LOGIN VIEW -->
+      <div class="login-portal-view" id="loginPortalViewAdmin">
+        <form id="portalAdminForm" class="login-portal-form">
+          <div class="form-group">
+            <label for="portalAdminUsername"><i class="fas fa-user"></i> Username</label>
+            <input type="text" id="portalAdminUsername" class="form-control" placeholder="Masukkan username" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label for="portalAdminPassword"><i class="fas fa-key"></i> Password</label>
+            <input type="password" id="portalAdminPassword" class="form-control" placeholder="Masukkan password" required autocomplete="current-password">
+          </div>
+
+          <div class="alert-box alert-danger-outline mb-3" id="portalAdminError" style="display: none;">
+            <i class="fas fa-circle-xmark"></i>
+            <span id="portalAdminErrorText">Username atau password salah!</span>
+          </div>
+
+          <div class="login-portal-btn-row">
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnPortalAdminLogin">
+              <i class="fas fa-sign-in-alt"></i> Masuk Sebagai Admin
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container" style="display: none;">
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
@@ -39,6 +117,7 @@
         <a href="#" class="menu-item" data-view="schedule">
           <i class="fas fa-calendar-alt"></i>
           <span>Jadwal Shift</span>
+          <i class="fas fa-lock lock-icon" style="margin-left: auto; font-size: 0.8rem; opacity: 0.6; display: inline-block;"></i>
         </a>
         <a href="#" class="menu-item" data-view="handover">
           <i class="fas fa-file-signature"></i>
@@ -51,6 +130,15 @@
         <a href="#" class="menu-item" data-view="employees">
           <i class="fas fa-users-cog"></i>
           <span>Data Karyawan</span>
+          <i class="fas fa-lock lock-icon" style="margin-left: auto; font-size: 0.8rem; opacity: 0.6; display: inline-block;"></i>
+        </a>
+        <a href="#" class="menu-item" data-view="admin-login" id="menu-item-admin" style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 18px;">
+          <i class="fas fa-user-shield text-emerald"></i>
+          <span id="adminMenuText">Login Admin</span>
+        </a>
+        <a href="#" class="menu-item" id="menu-item-logout" style="margin-top: 10px; color: var(--rose);">
+          <i class="fas fa-sign-out-alt text-rose"></i>
+          <span>Keluar Sesi</span>
         </a>
       </nav>
 
@@ -545,6 +633,49 @@
           </div>
         </section>
 
+        <!-- ADMIN LOGIN VIEW -->
+        <section class="view-panel" id="view-admin-login">
+          <div class="admin-login-wrapper">
+            <div class="admin-login-card glass-card">
+              <div class="admin-login-header">
+                <div class="admin-login-icon">
+                  <i class="fas fa-user-shield"></i>
+                </div>
+                <h2>Login Administrator</h2>
+                <p class="description">Harap masuk menggunakan akun admin untuk mengakses area manajemen.</p>
+              </div>
+
+              <!-- REDIRECT WARNING BANNER -->
+              <div class="alert-box alert-warning-outline mb-4" id="adminLoginWarning" style="display: none;">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span id="adminLoginWarningText">Akses terbatas. Silakan login terlebih dahulu.</span>
+              </div>
+
+              <!-- LOGIN FEEDBACK -->
+              <div class="alert-box alert-danger-outline mb-4" id="adminLoginError" style="display: none;">
+                <i class="fas fa-circle-xmark"></i>
+                <span id="adminLoginErrorText">Username atau password salah!</span>
+              </div>
+
+              <form id="adminLoginForm">
+                <div class="form-group">
+                  <label for="adminUsername"><i class="fas fa-user"></i> Username</label>
+                  <input type="text" id="adminUsername" class="form-control" placeholder="Masukkan username" required autocomplete="username">
+                </div>
+
+                <div class="form-group mt-3">
+                  <label for="adminPassword"><i class="fas fa-key"></i> Password</label>
+                  <input type="password" id="adminPassword" class="form-control" placeholder="Masukkan password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block mt-4" id="btnAdminLogin">
+                  <i class="fas fa-sign-in-alt"></i> Masuk Sebagai Admin
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
@@ -690,6 +821,39 @@
         <button type="button" class="btn btn-primary" id="btnConfirmSwitchSession">
           <i class="fas fa-check-circle"></i> Beralih Sesi
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTAL BIOMETRIC SCAN MODAL -->
+  <div class="modal-backdrop" id="portalBiometricModal">
+    <div class="modal glass-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-shield-halved text-emerald"></i> Scan Wajah Presensi Karyawan</h3>
+        <button class="close-modal-btn" onclick="closePortalScanModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="scanner-container" style="height: 280px; border-radius: 12px; margin-bottom: 20px;">
+          <video id="portalScanVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+          <canvas id="portalScanOverlayCanvas"></canvas>
+          <div class="scanner-hud">
+            <div class="hud-corner top-left"></div>
+            <div class="hud-corner top-right"></div>
+            <div class="hud-corner bottom-left"></div>
+            <div class="hud-corner bottom-right"></div>
+            <div class="laser-scanner"></div>
+          </div>
+        </div>
+        <div class="verification-status-box text-center">
+          <div id="portalScanMessage">Menghubungkan kamera...</div>
+          <div class="progress-bar-container mt-2" style="display:none;" id="portalScanProgressContainer">
+            <div class="progress-bar" id="portalScanProgressBar"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: center;">
+        <button type="button" class="btn btn-outline" onclick="closePortalScanModal()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnTriggerPortalScan">Mulai Pindai</button>
       </div>
     </div>
   </div>
